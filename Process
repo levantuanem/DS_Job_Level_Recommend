@@ -1,0 +1,21 @@
+[✅] Bước 1 — Logistic Regression
+     F1 Macro = 0.9051
+
+[✅] Bước 2 — Random Forest
+     F1 Macro = 0.9295
+
+[✅] Bước 3 — Linear SVM
+
+[✅] Bước 4 — Gradient Boosting
+
+[⬜] Bước 5 — So sánh 4 model
+
+[⬜] Bước 6 — LazyPredict
+
+[⬜] Bước 7 — TOP 5
+
+[⬜] Bước 8 — Grid Search
+
+[⬜] Bước 9 — Chọn Best Model
+
+[⬜] Bước 10 — Tuning Best Model

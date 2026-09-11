@@ -8,3 +8,4 @@ PyYAML
 matplotlib
 seaborn
 jupyter
+pytest

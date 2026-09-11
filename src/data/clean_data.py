@@ -23,6 +23,7 @@ if str(current_dir) not in sys.path:
 try:
     from .cleaning_functions import (
         report_missing,
+        drop_missing_required,
         drop_duplicate_records,
         fix_salary_range,
         flag_zero_negative_salary,
@@ -33,6 +34,7 @@ try:
 except (ImportError, ValueError):
     from cleaning_functions import (
         report_missing,
+        drop_missing_required,
         drop_duplicate_records,
         fix_salary_range,
         flag_zero_negative_salary,
@@ -81,23 +83,23 @@ def clean_salaries(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[Dict]]:
     df_clean, r = drop_duplicate_records(df, subset=["salary_id"])
     logs.append({**r, "table": "salaries"})
 
-    # 2. Fix inverted range
-    df_clean, r = fix_salary_range(df_clean, min_col="min_salary", max_col="max_salary")
-    logs.append({**r, "table": "salaries"})
-
-    # 3. Flag <= 0
-    df_clean, r = flag_zero_negative_salary(df_clean, cols=("min_salary", "med_salary", "max_salary"))
-    logs.append({**r, "table": "salaries"})
-
-    # 4. Fix units
-    df_clean, r = fix_salary_units(df_clean, min_col="min_salary", max_col="max_salary", med_col="med_salary", pay_period_col="pay_period")
-    logs.append({**r, "table": "salaries"})
-
-    # 5. Standardize categories
+    # 2. Standardize categories first
     for col in ["pay_period", "currency", "compensation_type"]:
         if col in df_clean.columns:
             df_clean, r = standardize_categorical(df_clean, col)
             logs.append({**r, "table": "salaries"})
+
+    # 3. Fix inverted range
+    df_clean, r = fix_salary_range(df_clean, min_col="min_salary", max_col="max_salary")
+    logs.append({**r, "table": "salaries"})
+
+    # 4. Flag <= 0
+    df_clean, r = flag_zero_negative_salary(df_clean, cols=("min_salary", "med_salary", "max_salary"))
+    logs.append({**r, "table": "salaries"})
+
+    # 5. Fix units
+    df_clean, r = fix_salary_units(df_clean, min_col="min_salary", max_col="max_salary", med_col="med_salary", pay_period_col="pay_period")
+    logs.append({**r, "table": "salaries"})
 
     return df_clean, logs
 
@@ -111,16 +113,26 @@ def clean_postings(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[Dict]]:
     df_clean, r = drop_duplicate_records(df, subset=["job_id"])
     logs.append({**r, "table": "postings"})
 
-    # 2. Flag <= 0 salary
+    # 2. Drop missing required fields (job_id, title, description)
+    df_clean, r = drop_missing_required(df_clean, subset=["job_id", "title", "description"])
+    logs.append({**r, "table": "postings"})
+
+    # 3. Standardize categorical columns
+    for col in ["work_type", "formatted_work_type", "formatted_experience_level", "pay_period", "currency", "compensation_type"]:
+        if col in df_clean.columns:
+            df_clean, r = standardize_categorical(df_clean, col)
+            logs.append({**r, "table": "postings"})
+
+    # 4. Flag <= 0 salary
     salary_cols = ("min_salary", "med_salary", "max_salary", "normalized_salary")
     df_clean, r = flag_zero_negative_salary(df_clean, cols=salary_cols)
     logs.append({**r, "table": "postings"})
 
-    # 3. Fix inverted salary range
+    # 5. Fix inverted salary range
     df_clean, r = fix_salary_range(df_clean, min_col="min_salary", max_col="max_salary")
     logs.append({**r, "table": "postings"})
 
-    # 4. Fix salary unit mismatches & recalculate normalized_salary
+    # 6. Fix salary unit mismatches & recalculate normalized_salary
     df_clean, r = fix_salary_units(
         df_clean,
         min_col="min_salary",
@@ -131,19 +143,13 @@ def clean_postings(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[Dict]]:
     )
     logs.append({**r, "table": "postings"})
 
-    # 5. Clean text columns
+    # 7. Clean text columns
     for col in ["title", "description", "skills_desc", "company_name", "location"]:
         if col in df_clean.columns:
             df_clean, r = clean_text_column(df_clean, col)
             logs.append({**r, "table": "postings"})
 
-    # 6. Standardize categorical columns
-    for col in ["work_type", "pay_period", "currency", "compensation_type"]:
-        if col in df_clean.columns:
-            df_clean, r = standardize_categorical(df_clean, col)
-            logs.append({**r, "table": "postings"})
-
-    # 7. remote_allowed: chuẩn hóa NaN thành 0, 1.0 thành 1
+    # 8. remote_allowed: chuẩn hóa NaN thành 0, 1.0 thành 1
     if "remote_allowed" in df_clean.columns:
         df_clean["remote_allowed"] = df_clean["remote_allowed"].fillna(0).astype(int)
         logs.append({
@@ -266,13 +272,16 @@ def run_pipeline(raw_dir: Path, processed_dir: Path):
     cleaning_log_df.to_csv(processed_dir / "cleaning_log.csv", index=False)
     logger.info(f"Saved cleaning log with {len(cleaning_log_df)} entries to {processed_dir / 'cleaning_log.csv'}")
 
-    # In bảng tóm tắt
+    # In và lưu bảng tóm tắt
     summary = pd.DataFrame({
         "Table": list(before_counts.keys()),
         "Records Before": list(before_counts.values()),
         "Records After": [after_counts.get(k, 0) for k in before_counts.keys()],
     })
     summary["Records Removed"] = summary["Records Before"] - summary["Records After"]
+    summary.to_csv(processed_dir / "cleaning_summary.csv", index=False)
+    logger.info(f"Saved cleaning summary to {processed_dir / 'cleaning_summary.csv'}")
+
     print("\n" + "=" * 50)
     print("PIPELINE SUMMARY: BEFORE vs AFTER CLEANING")
     print("=" * 50)

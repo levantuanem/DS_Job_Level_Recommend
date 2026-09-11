@@ -19,10 +19,43 @@ def report_missing(df: pd.DataFrame) -> pd.DataFrame:
     """
     Trả về bảng thống kê missing value: số lượng + tỷ lệ % theo từng cột có khuyết thiếu.
     """
+    if len(df) == 0:
+        return pd.DataFrame(columns=["n_missing", "pct_missing"])
     miss = df.isna().sum()
     pct = (miss / len(df) * 100).round(2)
     rep = pd.DataFrame({"n_missing": miss, "pct_missing": pct})
     return rep[rep["n_missing"] > 0].sort_values("pct_missing", ascending=False)
+
+
+def drop_missing_required(
+    df: pd.DataFrame, subset: List[str]
+) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    """
+    Loại bỏ các bản ghi thiếu thông tin tại các trường bắt buộc (required fields).
+    """
+    before = len(df)
+    existing_cols = [c for c in subset if c in df.columns]
+    if not existing_cols:
+        return df, {
+            "action": "drop_missing_required",
+            "columns": subset,
+            "n_before": before,
+            "n_after": before,
+            "n_removed": 0,
+            "reason": "Không tìm thấy cột bắt buộc trong DataFrame",
+        }
+
+    df_clean = df.dropna(subset=existing_cols).copy()
+    after = len(df_clean)
+    report = {
+        "action": "drop_missing_required",
+        "columns": existing_cols,
+        "n_before": before,
+        "n_after": after,
+        "n_removed": before - after,
+        "reason": f"Các trường bắt buộc ({', '.join(existing_cols)}) không được để trống.",
+    }
+    return df_clean, report
 
 
 def drop_duplicate_records(
@@ -125,8 +158,11 @@ def fix_salary_units(
 
     has_norm = norm_col in df.columns
 
+    # Chuẩn hóa tạm thời để so sánh chuẩn xác
+    period_s = df[pay_period_col].astype(str).str.strip().str.upper()
+
     # 1. Trường hợp HOURLY nhưng lương >= 1000
-    hourly_mask = (df[pay_period_col] == "HOURLY") & (
+    hourly_mask = (period_s == "HOURLY") & (
         (df[min_col] >= 1000)
         | (df[max_col] >= 1000)
         | (df[med_col] >= 1000)
@@ -144,9 +180,10 @@ def fix_salary_units(
             df.loc[hourly_mask, norm_col] = base
 
     # 2. Trường hợp YEARLY nhưng lương <= 150 (chỉ áp dụng khi lương > 0)
-    yearly_mask = (df[pay_period_col] == "YEARLY") & (
+    yearly_mask = (period_s == "YEARLY") & (
         ((df[max_col] > 0) & (df[max_col] <= 150))
         | ((df[med_col] > 0) & (df[med_col] <= 150))
+        | ((df[min_col] > 0) & (df[min_col] <= 150))
     )
     n_yearly_fixed = int(yearly_mask.sum())
     if n_yearly_fixed > 0:

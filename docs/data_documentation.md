@@ -85,16 +85,16 @@ Các feature trong bảng trung tâm `postings.csv` được phân loại thành
 
 | Bảng dữ liệu | Số dòng Trước | Số dòng Sau | Số dòng Bị loại | Tỷ lệ dữ liệu bảo toàn |
 |---|---|---|---|---|
-| `postings.csv` | 123,849 | 123,849 | 0 | 100% |
+| `postings.csv` | 123,849 | 123,842 | 7 | 99.99% |
 | `companies.csv` | 24,473 | 24,473 | 0 | 100% |
 | `company_industries.csv` | 24,375 | 24,375 | 0 | 100% |
-| `company_specialities.csv` | 169,387 | 169,387 | 0 | 100% |
+| `company_specialities.csv` | 169,387 | 169,366 | 21 | 99.99% |
 | `job_industries.csv` | 164,808 | 164,808 | 0 | 100% |
 | `job_skills.csv` | 213,768 | 213,768 | 0 | 100% |
 | `salaries.csv` | 40,785 | 40,785 | 0 | 100% |
 | `benefits.csv` | 67,943 | 67,943 | 0 | 100% |
 
-> **Nhận xét:** Tuân thủ nguyên tắc không tự ý xóa bỏ record nếu thông tin cốt lõi vẫn có giá trị sử dụng. Mọi lỗi dữ liệu (Data Error) đều được sửa chữa tận gốc (chuyển về NaN, hoán đổi thứ tự, sửa đơn vị) thay vì drop row.
+> **Nhận xét:** Tuân thủ nguyên tắc không tự ý xóa bỏ record nếu thông tin cốt lõi vẫn có giá trị sử dụng. Chỉ có 7 bản ghi tin tuyển dụng bị loại bỏ do thiếu hoàn toàn thông tin bắt buộc (`title` hoặc `description`), và 21 bản ghi trùng lặp khóa trong bảng liên kết `company_specialities` được deduplicate. Mọi lỗi dữ liệu (Data Error) khác đều được sửa chữa tận gốc (chuyển về NaN, hoán đổi thứ tự, sửa đơn vị) thay vì drop row.
 
 ---
 

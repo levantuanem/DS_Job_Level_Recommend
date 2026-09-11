@@ -11,7 +11,11 @@ import seaborn as sns
 
 
 def plot_numerical_distribution(df: pd.DataFrame, col: str, bins: int = 60):
-    """Vẽ phân phối (Histogram + KDE) và Boxplot cho một cột số."""
+    """Vẽ phân phối (Histogram + KDE nếu có biến thiên) và Boxplot cho một cột số."""
+    if col not in df.columns:
+        print(f"Cột {col} không tồn tại trong DataFrame.")
+        return
+
     data = df[col].dropna()
     if len(data) == 0:
         print(f"Cột {col}: không có dữ liệu để vẽ.")
@@ -33,7 +37,10 @@ def plot_numerical_distribution(df: pd.DataFrame, col: str, bins: int = 60):
         alpha=0.7,
         density=True,
     )
-    data.plot.kde(ax=axes[0], color="crimson", linewidth=2)
+    # Chỉ vẽ KDE khi dữ liệu có độ biến thiên (tránh lỗi ma trận kỳ dị)
+    if data.nunique() > 1 and data.std() > 0:
+        data.plot.kde(ax=axes[0], color="crimson", linewidth=2)
+
     axes[0].axvline(
         data.mean(),
         color="orange",
@@ -49,7 +56,7 @@ def plot_numerical_distribution(df: pd.DataFrame, col: str, bins: int = 60):
     axes[0].set_title(f"Phân phối — {col}", fontsize=13, fontweight="bold")
     axes[0].legend()
 
-    skew = data.skew()
+    skew = data.skew() if len(data) > 2 else 0.0
     txt = (
         "Lệch phải"
         if skew > 0.5
@@ -76,10 +83,11 @@ def plot_numerical_distribution(df: pd.DataFrame, col: str, bins: int = 60):
         flierprops=dict(marker=".", color="gray", alpha=0.3, markersize=3),
     )
     axes[1].set_title(f"Boxplot — {col}", fontsize=13, fontweight="bold")
+    pct_out = (n_out / len(data) * 100) if len(data) > 0 else 0.0
     axes[1].text(
         0.97,
         0.85,
-        f"Q1 = {Q1:,.0f}\nQ3 = {Q3:,.0f}\nIQR = {IQR:,.0f}\nOutlier = {n_out:,} ({n_out/len(data)*100:.1f}%)",
+        f"Q1 = {Q1:,.0f}\nQ3 = {Q3:,.0f}\nIQR = {IQR:,.0f}\nOutlier = {n_out:,} ({pct_out:.1f}%)",
         transform=axes[1].transAxes,
         ha="right",
         va="top",
@@ -100,7 +108,15 @@ def plot_categorical_distribution(
     df: pd.DataFrame, col: str, top_n: int = 15
 ):
     """Vẽ biểu đồ số lượng và tỷ lệ % cho cột phân loại (xử lý an toàn nhãn NaN)."""
+    if col not in df.columns:
+        print(f"Cột {col} không tồn tại trong DataFrame.")
+        return
+
     vc = df[col].value_counts(dropna=False).head(top_n)
+    if len(df) == 0 or len(vc) == 0:
+        print(f"Cột {col}: không có dữ liệu để vẽ.")
+        return
+
     pct = vc / len(df) * 100
     x_labels = [str(x) if pd.notna(x) else "(Trống)" for x in vc.index]
     colors = sns.color_palette("Set2", len(vc))
@@ -122,7 +138,16 @@ def plot_categorical_distribution(
     axes[0].tick_params(axis="x", rotation=40)
 
     # Tỷ lệ %
-    axes[1].bar(x_labels, pct.values, color=colors, edgecolor="white")
+    bars2 = axes[1].bar(x_labels, pct.values, color=colors, edgecolor="white")
+    for bar, p in zip(bars2, pct.values):
+        axes[1].text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + pct.values.max() * 0.01,
+            f"{p:.1f}%",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
     axes[1].set_ylabel("Tỷ lệ (%)")
     axes[1].set_title(
         f"Tỷ lệ phần trăm — {col}", fontsize=12, fontweight="bold"
@@ -140,7 +165,12 @@ def plot_correlation_heatmap(
     df: pd.DataFrame, num_cols: list, method: str = "pearson"
 ):
     """Vẽ Heatmap ma trận tương quan nửa dưới cho danh sách cột số."""
-    corr = df[num_cols].corr(method=method)
+    valid_cols = [c for c in num_cols if c in df.columns]
+    if len(valid_cols) < 2:
+        print("Cần ít nhất 2 cột số hợp lệ để tính tương quan.")
+        return
+
+    corr = df[valid_cols].corr(method=method)
     mask = np.triu(np.ones_like(corr, dtype=bool))
 
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -170,6 +200,10 @@ def plot_feature_vs_target(
     df: pd.DataFrame, num_col: str, target_col: str
 ):
     """Vẽ Boxplot và Violin plot so sánh phân phối cột số theo biến mục tiêu."""
+    if num_col not in df.columns or target_col not in df.columns:
+        print(f"Cột {num_col} hoặc {target_col} không tồn tại.")
+        return
+
     plot_df = df[[target_col, num_col]].dropna()
     if len(plot_df) == 0:
         return
@@ -187,6 +221,8 @@ def plot_feature_vs_target(
         y=num_col,
         order=order,
         palette="Set2",
+        hue=target_col,
+        legend=False,
         ax=axes[0],
     )
     axes[0].set_title(
@@ -202,6 +238,8 @@ def plot_feature_vs_target(
         y=num_col,
         order=order,
         palette="Set2",
+        hue=target_col,
+        legend=False,
         ax=axes[1],
         inner="quartile",
         cut=0,
@@ -224,7 +262,13 @@ def plot_feature_vs_target(
 
 def plot_class_imbalance(df: pd.DataFrame, target_col: str):
     """Vẽ biểu đồ cột và tròn thể hiện mất cân bằng nhãn mục tiêu."""
+    if target_col not in df.columns:
+        print(f"Cột {target_col} không tồn tại.")
+        return
+
     counts = df[target_col].value_counts(dropna=False)
+    if len(counts) == 0:
+        return
     pcts = df[target_col].value_counts(normalize=True, dropna=False) * 100
     labels = [
         str(x) if pd.notna(x) else "(Trống / NaN)" for x in counts.index
@@ -272,6 +316,10 @@ def plot_class_imbalance(df: pd.DataFrame, target_col: str):
 
 def plot_outlier_log_transform(df: pd.DataFrame, col: str):
     """So sánh phân phối gốc và sau khi áp dụng Log(1+x)."""
+    if col not in df.columns:
+        print(f"Cột {col} không tồn tại.")
+        return
+
     data = df[col].dropna()
     if len(data) == 0:
         return
@@ -299,27 +347,34 @@ def plot_outlier_log_transform(df: pd.DataFrame, col: str):
         edgecolor="white",
         density=True,
     )
+    skew_orig = data.skew() if len(data) > 2 else 0.0
     axes[1].set_title(
-        f"Phân phối gốc (Skew={data.skew():.2f})",
+        f"Phân phối gốc (Skew={skew_orig:.2f})",
         fontsize=11,
         fontweight="bold",
     )
 
     # Log
-    log_d = np.log1p(data[data > 0])
-    axes[2].hist(
-        log_d,
-        bins=60,
-        color="seagreen",
-        alpha=0.7,
-        edgecolor="white",
-        density=True,
-    )
-    axes[2].set_title(
-        f"Sau Log(1+x) (Skew={log_d.skew():.2f})",
-        fontsize=11,
-        fontweight="bold",
-    )
+    pos_data = data[data > 0]
+    if len(pos_data) > 0:
+        log_d = np.log1p(pos_data)
+        axes[2].hist(
+            log_d,
+            bins=60,
+            color="seagreen",
+            alpha=0.7,
+            edgecolor="white",
+            density=True,
+        )
+        skew_log = log_d.skew() if len(log_d) > 2 else 0.0
+        axes[2].set_title(
+            f"Sau Log(1+x) (Skew={skew_log:.2f})",
+            fontsize=11,
+            fontweight="bold",
+        )
+    else:
+        axes[2].set_title(f"Không có dữ liệu > 0 để tính log", fontsize=11)
+
     axes[2].set_xlabel("log(1 + giá trị)")
 
     plt.suptitle(

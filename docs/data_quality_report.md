@@ -10,7 +10,7 @@
 Dataset LinkedIn Job Postings bao gồm 8 bảng dữ liệu quan hệ với trung tâm là bảng `postings.csv` (123,849 dòng, 31 cột). Qua quá trình kiểm tra toàn diện, chất lượng tổng thể của dữ liệu đạt mức **Tốt - Sẵn sàng cho phân tích** sau khi khắc phục các lỗi nhập liệu cục bộ.
 
 ### Các điểm sáng của Dataset:
-1. **Tính duy nhất (Uniqueness):** Không có bất kỳ dòng trùng lặp hoàn toàn nào trong toàn bộ 8 bảng dữ liệu. Khóa chính `job_id` trong `postings.csv` và `company_id` trong `companies.csv` đạt mức duy nhất tuyệt đối 100%.
+1. **Tính duy nhất (Uniqueness):** Khóa chính `job_id` trong `postings.csv` và `company_id` trong `companies.csv` đạt mức duy nhất tuyệt đối 100%. Trong các bảng phụ, 21 bản ghi trùng lặp khóa trong `company_specialities.csv` đã được loại bỏ chính xác.
 2. **Tính hợp lệ cơ bản của Lương:** Không xuất hiện trường hợp `min_salary > max_salary` trong tập dữ liệu thô.
 3. **Tính toàn vẹn khóa ngoại:** Các bảng liên kết (`job_skills`, `job_industries`, `salaries`, `benefits`) đều ánh xạ chính xác về các `job_id` hợp lệ.
 
@@ -135,4 +135,4 @@ Một nguyên tắc sống còn của Data Engineering là: **Không bao giờ t
 ---
 
 ## 5. Kết Luận & Bàn Giao
-Toàn bộ 8 bảng dữ liệu raw đã được xử lý chuẩn hóa, bảo toàn 100% số lượng record ban đầu, khắc phục triệt để các lỗi dữ liệu nghiêm trọng và được lưu trữ an toàn tại `data/processed/`. Dữ liệu sẵn sàng 100% để chuyển giao cho **NGƯỜI 2 (EDA & Visualization)** và **NGƯỜI 3 (Feature Engineering)**.
+Toàn bộ 8 bảng dữ liệu raw đã được xử lý chuẩn hóa, bảo toàn >99.98% số lượng record ban đầu (chỉ loại 7 tin tuyển dụng thiếu hẳn chức danh/mô tả bắt buộc và 21 dòng trùng lặp khóa phụ), khắc phục triệt để các lỗi dữ liệu nghiêm trọng và được lưu trữ an toàn tại `data/processed/`. Dữ liệu sẵn sàng 100% để chuyển giao cho **NGƯỜI 2 (EDA & Visualization)** và **NGƯỜI 3 (Feature Engineering)**.

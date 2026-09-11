@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT_DIR / "src" / "data"))
 
 from data.cleaning_functions import (
     report_missing,
+    drop_missing_required,
     drop_duplicate_records,
     fix_salary_range,
     flag_zero_negative_salary,
@@ -63,6 +64,17 @@ class TestCleaningFunctions:
         assert len(df_clean) == 2
         assert report["n_removed"] == 1
         assert df_clean["id"].tolist() == [1, 2]
+
+    def test_drop_missing_required(self):
+        df = pd.DataFrame({
+            "id": [1, 2, np.nan, 4],
+            "title": ["Data Scientist", None, "Analyst", "Engineer"],
+            "desc": ["A", "B", "C", "D"],
+        })
+        df_clean, report = drop_missing_required(df, subset=["id", "title"])
+        assert len(df_clean) == 2
+        assert df_clean["id"].tolist() == [1.0, 4.0]
+        assert report["n_removed"] == 2
 
     def test_fix_salary_range_swap(self):
         # Case: min > max due to swapped columns
@@ -199,6 +211,10 @@ class TestProcessedDataIntegrity:
         # 4. remote_allowed values must be valid (0 or 1, or NaN/1)
         if "remote_allowed" in postings.columns:
             assert postings["remote_allowed"].fillna(0).isin([0, 1, 0.0, 1.0]).all()
+
+        # 5. Required fields must not be empty
+        assert postings["title"].isnull().sum() == 0
+        assert postings["description"].isnull().sum() == 0
 
     def test_companies_clean_integrity(self, processed_dir):
         companies = pd.read_csv(processed_dir / "companies_clean.csv")

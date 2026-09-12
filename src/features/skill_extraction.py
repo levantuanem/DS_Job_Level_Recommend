@@ -1,93 +1,113 @@
 import re
 import pandas as pd
 
-SKILLS = {
-    "python": ["python"],
-    "sql": ["sql"],
-    "java": ["java"],
-    "javascript": ["javascript", "java script"],
-    "typescript": ["typescript"],
-    "r": ["r", "r programming", "r language"],
-    "c++": ["c++"],
-    "c#": ["c#", "c sharp"],
-    "aws": ["aws", "amazon web services"],
-    "azure": ["azure", "microsoft azure"],
-    "gcp": ["gcp", "google cloud", "google cloud platform"],
-    "docker": ["docker"],
-    "kubernetes": ["kubernetes", "k8s"],
-    "excel": ["excel", "microsoft excel"],
-    "pandas": ["pandas"],
-    "numpy": ["numpy"],
-    "machine_learning": ["machine learning", "machine-learning"],
-    "deep_learning": ["deep learning", "deep-learning"],
-    "tensorflow": ["tensorflow"],
-    "pytorch": ["pytorch"],
-    "scikit_learn": ["scikit-learn", "sklearn", "scikit learn"],
-    "leadership": ["leadership", "team leadership"],
-    "management": ["management", "project management"]
-}
+# =========================
+# SKILL VOCABULARY
+# =========================
+SKILL_VOCABULARY = [
+    # Programming
+    "python",
+    "java",
+    "c++",
+    "c#",
+    "javascript",
+    "typescript",
+    "r",
+    "sql",
 
-COMPILED_SKILLS = {
-    skill: [
-        re.compile(rf"(?<!\w){re.escape(pattern.lower())}(?!\w)")
-        for pattern in patterns
-    ]
-    for skill, patterns in SKILLS.items()
-}
+    # Data Science / ML
+    "machine learning",
+    "deep learning",
+    "artificial intelligence",
+    "data science",
+    "data analysis",
+    "natural language processing",
+    "computer vision",
 
-SKILL_EXPRESSIONS = {
-    skill: "|".join(
-        rf"(?<!\w){re.escape(pattern.lower())}(?!\w)"
-        for pattern in patterns
-    )
-    for skill, patterns in SKILLS.items()
-}
+    # ML frameworks
+    "pytorch",
+    "tensorflow",
+    "keras",
+    "scikit-learn",
 
-def normalize_text(text) -> str:
-    if pd.isna(text):
-        return ""
-    text = str(text).lower()
-    text = re.sub(r"\s+", " ", text)
-    return f" {text.strip()} "
+    # Data
+    "pandas",
+    "numpy",
+    "spark",
+    "hadoop",
 
-def contains_skill(text: str, patterns: list[re.Pattern[str]]) -> int:
-    normalized = normalize_text(text)
-    for expression in patterns:
-        if expression.search(normalized):
-            return 1
-    return 0
+    # Cloud / DevOps
+    "aws",
+    "azure",
+    "gcp",
+    "docker",
+    "kubernetes",
 
-def extract_skill_features(
-    df: pd.DataFrame,
-    text_columns: list[str] | None = None) -> pd.DataFrame:
-    result = df.copy()
-    if text_columns is None:
-        text_columns = [
-            column
-            for column in [
-                "title",
-                "description",
-                "skills_desc"]
-            if column in result.columns]
+    # Databases
+    "mysql",
+    "postgresql",
+    "mongodb",
+    "oracle",
 
-    result["skill_text"] = (
-        result[text_columns]
-        .fillna("")
-        .astype(str)
-        .agg(" ".join, axis=1))
-    for skill, expression in SKILL_EXPRESSIONS.items():
-        result[f"has_{skill}"] = result["skill_text"].str.contains(
-            expression,
-            case=False,
-            na=False,
-            regex=True,
-        ).astype("int8")
+    # Visualization / BI
+    "tableau",
+    "power bi",
+    "excel",
 
-    skill_columns = [
-        column
-        for column in result.columns
-        if column.startswith("has_")
-    ]
+    # Software / Web
+    "git",
+    "github",
+    "linux",
+    "html",
+    "css",
+    "react",
+    "node.js"
+]
 
-    result["skill_count"] = result[skill_columns].sum(axis=1)
-    return result
+# =========================
+# TEXT PREPARATION
+# =========================
+def _combine_text(df: pd.DataFrame) -> pd.Series:
+    return (
+        df["title"].fillna("").astype(str)
+        + " "
+        + df["description"].fillna("").astype(str)
+        + " "
+        + df["skills_desc"].fillna("").astype(str)
+    ).str.lower()
+
+# =========================
+# SKILL EXTRACTION
+# =========================
+
+def extract_skill_features(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    text = _combine_text(df)
+    skill_columns = []
+    for skill in SKILL_VOCABULARY:
+        column_name = (
+            "skill_"
+            + re.sub(r"[^a-zA-Z0-9]+", "_", skill)
+            .strip("_")
+            .lower()
+        )
+
+        # Avoid duplicate feature names
+        if column_name in skill_columns:
+            continue
+
+        df[column_name] = (
+            text.str.contains(
+                re.escape(skill),
+                regex=True,
+                na=False,
+            )
+            .astype(int)
+        )
+
+        skill_columns.append(column_name)
+
+    # Total number of detected skills
+    df["skill_count"] = df[skill_columns].sum(axis=1)
+
+    return df

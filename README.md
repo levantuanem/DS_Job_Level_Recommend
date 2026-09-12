@@ -115,24 +115,10 @@ Business Insights
 ============================================================
 NGƯỜI 1 — DATA COLLECTION + DATA UNDERSTANDING + DATA CLEANING
 ============================================================
----
 git clone https://github.com/levantuanem/DS_Job_Recommend_Projects.git
 cd DS_Job_Recommend_Projects
 git checkout feature/data
-git fetch origin
-git pull origin feature/data
-git branch
-git status
-git remote -v
-- KẾT QUẢ:
-* feature/data
-  develop
-  main
-  feature/features
-  feature/model
-  feature/pipeline
-  feature/visualization
----
+
 * Branch: feature/data
 * VAI TRÒ: Data Engineer / Data Analyst
 * MỤC TIÊU: Thu thập, kiểm tra, hiểu và làm sạch dữ liệu tuyển dụng để tạo ra dataset có chất lượng, sẵn sàng cho EDA, Feature Engineering và Modeling.
@@ -258,24 +244,10 @@ tests/test_data.py
 ============================================================
 NGƯỜI 2 — EDA + STATISTICAL ANALYSIS + FEATURE RELATIONSHIP + VISUALIZATION
 ============================================================
----
 git clone https://github.com/levantuanem/DS_Job_Recommend_Projects.git
 cd DS_Job_Recommend_Projects
 git checkout feature/visualization
-git fetch origin
-git pull origin feature/visualization
-git branch
-git status
-git remote -v
-- Kết quả:
-  develop
-  main
-  feature/data
-  feature/features
-  feature/model
-  feature/pipeline
-* feature/visualization
----
+
 * Branch: feature/visualization
 * VAI TRÒ: Data Analyst / Visualization Analyst
 * MỤC TIÊU: Phân tích dữ liệu đã clean, tìm ra các mối quan hệ giữa Feature với Feature và Feature với Target, trực quan hóa dữ liệu và đưa ra Business Insights.
@@ -535,20 +507,7 @@ NGƯỜI 3 — FEATURE ENGINEERING + NLP + SKILL EXTRACTION
 git clone https://github.com/levantuanem/DS_Job_Recommend_Projects.git
 cd DS_Job_Recommend_Projects
 git checkout feature/features
-git fetch origin
-git pull origin feature/features
-git branch
-git status
-git remote -v
-- KẾT QUẢ:
-  develop
-  main
-  feature/data
-* feature/features
-  feature/model
-  feature/pipeline
-  feature/visualization
-  
+
 * Branch: feature/features
 * VAI TRÒ: Feature Engineer / NLP Engineer
 * MỤC TIÊU: Chuyển dữ liệu đã clean thành các Feature có thể sử dụng cho Machine Learning.
@@ -696,24 +655,10 @@ notebooks/
 ============================================================
 NGƯỜI 4 — MODELING + LOSS FUNCTION + BIAS / VARIANCE + EVALUATION
 ============================================================
----
 git clone https://github.com/levantuanem/DS_Job_Recommend_Projects.git
 cd DS_Job_Recommend_Projects
 git checkout feature/model
-git fetch origin
-git pull origin feature/model
-git branch
-git status
-git remote -v
-- Kết quả:
-  develop
-  main
-  feature/data
-  feature/features
-* feature/model
-  feature/pipeline
-  feature/visualization
----
+
 * Branch: feature/model
 * VAI TRÒ: Machine Learning Engineer
 * MỤC TIÊU: Xây dựng, tối ưu, đánh giá và giải thích Machine Learning Model dùng để dự đoán Job Level.
@@ -951,24 +896,10 @@ notebooks/
 ============================================================
 NGƯỜI 5 — INTEGRATION + PIPELINE + TESTING + DOCUMENTATION
 ============================================================
----
 git clone https://github.com/levantuanem/DS_Job_Recommend_Projects.git
 cd DS_Job_Recommend_Projects
 git checkout feature/pipeline
-git fetch origin
-git pull origin feature/pipeline
-git branch
-git status
-git remote -v
-- KẾT QUẢ:
-  develop
-  main
-  feature/data
-  feature/features
-  feature/model
-* feature/pipeline
-  feature/visualization
-  ---
+
 * Branch: feature/pipeline
 * VAI TRÒ: Data Science / ML Engineer / Project Integration
 * MỤC TIÊU: Kết nối toàn bộ phần việc của Team thành một Project hoàn chỉnh, có cấu trúc rõ ràng, có thể chạy lại và kiểm thử.

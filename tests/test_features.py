@@ -1,12 +1,8 @@
 import pandas as pd
-from src.features.build_features import build_features
-from src.features.numerical import create_numerical_features
-from src.features.text_features import create_text_features
+
+from src.features.text_features import add_text_features
 from src.features.skill_extraction import extract_skill_features
-from src.features.categorical import prepare_categorical_features
-from src.features.leakage import check_leakage
-from src.features.preprocessing import build_preprocessor
-from src.features.temporal import create_temporal_features
+from src.features.temporal_features import add_temporal_features
 
 
 # ============================================================
@@ -15,14 +11,12 @@ from src.features.temporal import create_temporal_features
 
 
 def create_test_dataframe():
-
     return pd.DataFrame(
         {
             "min_salary": [50000, 60000, 70000],
             "med_salary": [65000, 75000, 85000],
             "max_salary": [80000, 90000, 100000],
             "normalized_salary": [65000, 75000, 85000],
-
             "views": [100, 200, 500],
             "applies": [10, 20, 50],
 
@@ -68,6 +62,30 @@ def create_test_dataframe():
                 "OffsiteApply",
             ],
 
+            "posting_domain": [
+                "linkedin.com",
+                "linkedin.com",
+                "linkedin.com",
+            ],
+
+            "company_name": [
+                "Company A",
+                "Company B",
+                "Company C",
+            ],
+
+            "compensation_type": [
+                "BASE_SALARY",
+                "BASE_SALARY",
+                "BASE_SALARY",
+            ],
+
+            "sponsored": [
+                0,
+                1,
+                0,
+            ],
+
             "title": [
                 "Python Developer",
                 "Data Analyst",
@@ -86,6 +104,12 @@ def create_test_dataframe():
                 "Python, AWS, Machine Learning",
             ],
 
+            "listed_time": [
+                1704441600000,
+                1704528000000,
+                1704614400000,
+            ],
+
             "formatted_experience_level": [
                 "Entry level",
                 "Associate",
@@ -96,137 +120,22 @@ def create_test_dataframe():
 
 
 # ============================================================
-# Numerical Feature Tests
-# ============================================================
-
-
-def test_numerical_features():
-
-    df = create_test_dataframe()
-
-    result = create_numerical_features(df)
-
-    assert "salary_range" in result.columns
-    assert "log_salary" in result.columns
-    assert "application_rate" in result.columns
-    assert "view_to_apply_ratio" in result.columns
-
-
-def test_salary_range():
-
-    df = create_test_dataframe()
-
-    result = create_numerical_features(df)
-
-    assert result.loc[0, "salary_range"] == 30000
-
-
-def test_application_rate():
-
-    df = create_test_dataframe()
-
-    result = create_numerical_features(df)
-
-    assert result.loc[0, "application_rate"] == 0.1
-
-
-# ============================================================
-# Temporal Feature Tests
-# ============================================================
-
-
-def test_temporal_features():
-
-    start = pd.Timestamp("2024-01-05", tz="UTC")
-    df = pd.DataFrame(
-        {
-            "listed_time": [int(start.timestamp() * 1000)],
-            "expiry": [int((start + pd.Timedelta(days=3)).timestamp() * 1000)],
-        }
-    )
-
-    result = create_temporal_features(df)
-
-    assert result.loc[0, "duration_days"] == 3
-    assert result.loc[0, "post_month"] == 1
-    assert result.loc[0, "post_dayofweek"] == 4
-    assert result.loc[0, "is_weekend"] == 0
-
-
-# ============================================================
-# Preprocessing Tests
-# ============================================================
-
-
-def test_preprocessor_transforms_features():
-
-    df = create_test_dataframe()
-    X, _ = build_features(df)
-
-    preprocessor = build_preprocessor(X)
-    transformed = preprocessor.fit_transform(X)
-
-    assert transformed.shape[0] == len(X)
-    assert transformed.shape[1] > 0
-
-
-# ============================================================
-# Categorical Feature Tests
-# ============================================================
-
-
-def test_categorical_features():
-
-    df = create_test_dataframe()
-
-    columns = [
-        "work_type",
-        "formatted_work_type",
-        "remote_allowed",
-        "pay_period",
-        "currency",
-        "location",
-        "application_type",
-    ]
-
-    result = prepare_categorical_features(
-        df,
-        columns,
-    )
-
-    for column in columns:
-        assert column in result.columns
-
-
-# ============================================================
 # Text Feature Tests
 # ============================================================
 
 
-def test_text_features():
-
+def test_add_text_features():
     df = create_test_dataframe()
 
-    text_columns = [
-        "title",
-        "description",
-        "skills_desc",
-    ]
-
-    result = create_text_features(
-        df,
-        text_columns,
-    )
+    result = add_text_features(df)
 
     expected_columns = [
+        "title_length",
+        "description_length",
+        "skills_length",
+        "description_word_count",
+        "skills_word_count",
         "combined_text",
-        "text_length",
-        "word_count",
-        "sentence_count",
-        "keyword_count",
-        "technical_keyword_count",
-        "management_keyword_count",
-        "leadership_keyword_count",
     ]
 
     for column in expected_columns:
@@ -234,20 +143,42 @@ def test_text_features():
 
 
 def test_text_features_are_not_empty():
-
     df = create_test_dataframe()
 
-    result = create_text_features(
-        df,
-        [
-            "title",
-            "description",
-            "skills_desc",
-        ],
-    )
+    result = add_text_features(df)
 
-    assert (result["text_length"] > 0).all()
-    assert (result["word_count"] > 0).all()
+    assert (result["title_length"] > 0).all()
+    assert (result["description_length"] > 0).all()
+    assert (result["skills_length"] > 0).all()
+
+    assert (result["description_word_count"] > 0).all()
+    assert (result["skills_word_count"] > 0).all()
+
+
+def test_combined_text_contains_original_text():
+    df = create_test_dataframe()
+
+    result = add_text_features(df)
+
+    assert "Python Developer" in result.loc[0, "combined_text"]
+    assert "Python developer with SQL experience." in result.loc[0, "combined_text"]
+    assert "Python, SQL" in result.loc[0, "combined_text"]
+
+
+def test_text_features_handle_missing_values():
+    df = create_test_dataframe()
+
+    df.loc[0, "title"] = None
+    df.loc[1, "description"] = None
+    df.loc[2, "skills_desc"] = None
+
+    result = add_text_features(df)
+
+    assert result["title"].isna().sum() == 0
+    assert result["description"].isna().sum() == 0
+    assert result["skills_desc"].isna().sum() == 0
+
+    assert result["combined_text"].notna().all()
 
 
 # ============================================================
@@ -256,187 +187,157 @@ def test_text_features_are_not_empty():
 
 
 def test_skill_extraction():
-
     df = create_test_dataframe()
 
-    result = extract_skill_features(
-        df,
-        [
-            "title",
-            "description",
-            "skills_desc",
-        ],
-    )
+    result = extract_skill_features(df)
 
-    assert "has_python" in result.columns
-    assert "has_sql" in result.columns
-    assert "has_aws" in result.columns
-    assert "has_machine_learning" in result.columns
+    assert "skill_python" in result.columns
+    assert "skill_sql" in result.columns
+    assert "skill_aws" in result.columns
+    assert "skill_machine_learning" in result.columns
     assert "skill_count" in result.columns
 
 
 def test_python_skill():
-
     df = create_test_dataframe()
 
-    result = extract_skill_features(
-        df,
-        [
-            "title",
-            "description",
-            "skills_desc",
-        ],
-    )
+    result = extract_skill_features(df)
 
-    assert result.loc[0, "has_python"] == 1
+    assert result.loc[0, "skill_python"] == 1
+    assert result.loc[2, "skill_python"] == 1
 
 
 def test_sql_skill():
-
     df = create_test_dataframe()
 
-    result = extract_skill_features(
-        df,
-        [
-            "title",
-            "description",
-            "skills_desc",
-        ],
-    )
+    result = extract_skill_features(df)
 
-    assert result.loc[0, "has_sql"] == 1
+    assert result.loc[0, "skill_sql"] == 1
+    assert result.loc[1, "skill_sql"] == 1
+
+
+def test_aws_skill():
+    df = create_test_dataframe()
+
+    result = extract_skill_features(df)
+
+    assert result.loc[0, "skill_aws"] == 0
+    assert result.loc[2, "skill_aws"] == 1
+
+
+def test_machine_learning_skill():
+    df = create_test_dataframe()
+
+    result = extract_skill_features(df)
+
+    assert result.loc[2, "skill_machine_learning"] == 1
 
 
 def test_skill_count():
-
     df = create_test_dataframe()
 
-    result = extract_skill_features(
-        df,
-        [
-            "title",
-            "description",
-            "skills_desc",
-        ],
-    )
+    result = extract_skill_features(df)
 
     assert result.loc[0, "skill_count"] > 0
+    assert result.loc[1, "skill_count"] > 0
+    assert result.loc[2, "skill_count"] > 0
 
 
-def test_skill_matching_uses_word_boundaries():
+def test_skill_extraction_does_not_modify_original_dataframe():
+    df = create_test_dataframe()
+
+    original_columns = df.columns.tolist()
+
+    extract_skill_features(df)
+
+    assert df.columns.tolist() == original_columns
+
+
+# ============================================================
+# Temporal Feature Tests
+# ============================================================
+
+
+def test_temporal_features():
+    start = pd.Timestamp("2024-01-05", tz="UTC")
 
     df = pd.DataFrame(
         {
-            "title": ["JavaScript Developer", "R Analyst", "MySQL Developer"],
-            "description": ["JavaScript", "R programming", "MySQL"],
+            "listed_time": [
+                int(start.timestamp() * 1000)
+            ]
         }
     )
 
-    result = extract_skill_features(df, ["title", "description"])
+    result = add_temporal_features(df)
 
-    assert result.loc[0, "has_javascript"] == 1
-    assert result.loc[0, "has_java"] == 0
-    assert result.loc[1, "has_r"] == 1
-    assert result.loc[2, "has_sql"] == 0
-
-
-# ============================================================
-# Leakage Tests
-# ============================================================
+    assert result.loc[0, "posting_year"] == 2024
+    assert result.loc[0, "posting_month"] == 1
+    assert result.loc[0, "posting_day"] == 5
+    assert result.loc[0, "posting_dayofweek"] == 4
+    assert result.loc[0, "posting_quarter"] == 1
+    assert result.loc[0, "is_weekend"] == 0
 
 
-def test_leakage_detection():
+def test_temporal_features_weekend():
+    start = pd.Timestamp("2024-01-06", tz="UTC")
 
-    df = create_test_dataframe()
-
-    df = create_numerical_features(df)
-
-    report = check_leakage(
-        df,
-        "formatted_experience_level",
+    df = pd.DataFrame(
+        {
+            "listed_time": [
+                int(start.timestamp() * 1000)
+            ]
+        }
     )
 
-    assert report["target_exists"] is True
+    result = add_temporal_features(df)
 
-    assert "views" in report["suspicious_features"]
-    assert "applies" in report["suspicious_features"]
+    assert result.loc[0, "posting_dayofweek"] == 5
+    assert result.loc[0, "is_weekend"] == 1
 
 
-def test_build_features_can_remove_posting_engagement():
-
-    df = create_test_dataframe()
-
-    X, _ = build_features(
-        df,
-        include_posting_engagement=False,
+def test_temporal_features_without_listed_time():
+    df = pd.DataFrame(
+        {
+            "title": ["Python Developer"]
+        }
     )
 
-    assert "views" not in X.columns
-    assert "applies" not in X.columns
-    assert "application_rate" not in X.columns
-    assert "view_to_apply_ratio" not in X.columns
+    result = add_temporal_features(df)
+
+    assert list(result.columns) == list(df.columns)
 
 
 # ============================================================
-# Build Features Tests
+# Integration Tests
 # ============================================================
 
 
-def test_build_features():
-
+def test_text_and_skill_features_work_together():
     df = create_test_dataframe()
 
-    X, y = build_features(df)
+    df = add_text_features(df)
+    df = extract_skill_features(df)
 
-    assert isinstance(X, pd.DataFrame)
-    assert isinstance(y, pd.Series)
+    assert "combined_text" in df.columns
+    assert "skill_python" in df.columns
+    assert "skill_sql" in df.columns
+    assert "skill_count" in df.columns
 
 
-def test_target_is_removed_from_X():
-
+def test_all_feature_modules_work_together():
     df = create_test_dataframe()
 
-    X, y = build_features(df)
+    df = add_text_features(df)
+    df = extract_skill_features(df)
+    df = add_temporal_features(df)
 
-    assert "formatted_experience_level" not in X.columns
+    assert "combined_text" in df.columns
+    assert "skill_python" in df.columns
+    assert "skill_sql" in df.columns
+    assert "skill_count" in df.columns
 
-
-def test_target_is_y():
-
-    df = create_test_dataframe()
-
-    X, y = build_features(df)
-
-    assert y.name == "formatted_experience_level"
-
-
-def test_X_y_have_same_number_of_rows():
-
-    df = create_test_dataframe()
-
-    X, y = build_features(df)
-
-    assert len(X) == len(y)
-
-
-def test_build_features_contains_engineered_features():
-
-    df = create_test_dataframe()
-
-    X, y = build_features(df)
-
-    expected_columns = [
-        "salary_range",
-        "log_salary",
-        "application_rate",
-        "view_to_apply_ratio",
-        "combined_text",
-        "text_length",
-        "word_count",
-        "has_python",
-        "has_sql",
-        "skill_count",
-    ]
-
-    for column in expected_columns:
-        assert column in X.columns
+    assert "posting_year" in df.columns
+    assert "posting_month" in df.columns
+    assert "posting_dayofweek" in df.columns
+    assert "is_weekend" in df.columns

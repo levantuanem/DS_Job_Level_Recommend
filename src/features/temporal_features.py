@@ -10,7 +10,8 @@ def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
         return df
     posting_time = pd.to_datetime(
         df["listed_time"],
-        errors="coerce",
+        unit="ms",
+        errors="coerce"
     )
 
     # =========================
